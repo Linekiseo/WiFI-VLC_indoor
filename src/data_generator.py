@@ -5,6 +5,8 @@
 
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('TkAgg')  # Specify the backend to use
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -19,13 +21,23 @@ def generate_light_data(num_samples, light_range=(100, 1000)):
     return np.random.randint(light_range[0], light_range[1], size=(num_samples,))
 
 
-def combine_and_save_data(num_samples, num_aps, output_path='data.csv'):
-    """Generates Wi-Fi and light data, combines them, and saves to CSV."""
+def generate_labels(num_samples, imbalance_ratio=0.5):
+    """Generates binary labels with a specified imbalance ratio."""
+    # imbalance_ratio is the proportion of the minority class
+    num_minority = int(num_samples * imbalance_ratio)
+    num_majority = num_samples - num_minority
+    return np.concatenate([np.ones(num_minority), np.zeros(num_majority)])
+
+
+def combine_and_save_data(num_samples, num_aps, imbalance_ratio, output_path='data.csv'):
+    """Generates Wi-Fi and light data, combines them with labels, and saves to CSV."""
     wifi_data = generate_wifi_data(num_samples, num_aps)
     light_data = generate_light_data(num_samples)
+    labels = generate_labels(num_samples, imbalance_ratio)
 
-    combined_data = np.hstack((wifi_data, light_data.reshape(-1, 1)))
-    column_names = [f'wifi_{i + 1}' for i in range(num_aps)] + ['light_intensity']
+    # Combine data
+    combined_data = np.hstack((wifi_data, light_data.reshape(-1, 1), labels.reshape(-1, 1)))
+    column_names = [f'wifi_{i + 1}' for i in range(num_aps)] + ['light_intensity', 'label']
     df = pd.DataFrame(combined_data, columns=column_names)
 
     df.to_csv(output_path, index=False)
@@ -33,19 +45,18 @@ def combine_and_save_data(num_samples, num_aps, output_path='data.csv'):
 
 
 def visualize_data(df):
-    """Visualizes distributions of generated data."""
+    """Visualizes distributions of generated data and label balance."""
+
     plt.figure(figsize=(12, 6))
-    for i in range(df.shape[1] - 1):
-        sns.kdeplot(df.iloc[:, i], label=f'WiFi AP {i + 1}')
-    plt.title('Distribution of WiFi RSSI Values')
-    plt.legend()
+    sns.countplot(x='label', data=df)
+    plt.title('Distribution of Labels')
     plt.show()
 
-    sns.histplot(df['light_intensity'], kde=True, color='green')
-    plt.title('Distribution of Light Intensity')
+    sns.pairplot(df.drop('label', axis=1))
+    plt.suptitle('Pairplot of Features')
     plt.show()
 
 
 if __name__ == "__main__":
-    df = combine_and_save_data(1000, 10, 'data.csv')
+    df = combine_and_save_data(100000, 10, 0.2, 'data.csv')  # 20% minority class
     visualize_data(df)

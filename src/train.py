@@ -3,46 +3,49 @@
 # @Time : 2024/4/19 13:36
 # @Author : fanwc
 
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 import numpy as np
-import pandas as pd
 from model import create_model
-from data_preprocessing import preprocess_data, split_data, load_data
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+import matplotlib
+matplotlib.use('TkAgg')  # Specify the backend to use
 import matplotlib.pyplot as plt
 
+def load_data():
+    # This function should load your data properly formatted for training
+    # Example: return features, labels
+    return np.random.random((100, 10, 1)), np.random.randint(2, size=(100,))
 
-def train_model(features, labels):
-    """Trains the neural network model and visualizes the training process."""
-    X_train, X_test, y_train, y_test = split_data(features, labels)
-    model = create_model(input_shape=X_train.shape[1], num_outputs=1, output_activation='linear')
+def train_and_evaluate():
+    X, y = load_data()
+    model = create_model(input_shape=X.shape[1:])
 
-    history = model.fit(X_train, y_train, epochs=50, batch_size=32, validation_data=(X_test, y_test))
-    return history
+    checkpoint = ModelCheckpoint('best_model.h5', save_best_only=True, monitor='val_loss', mode='min')
+    early_stop = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 
+    history = model.fit(X, y, epochs=50, validation_split=0.2, callbacks=[checkpoint, early_stop], batch_size=32)
 
-def plot_training_history(history):
-    """Plots training and validation loss and accuracy."""
-    plt.figure(figsize=(14, 7))
+    # Plot training history
+    plt.figure(figsize=(12, 5))
     plt.subplot(1, 2, 1)
-    plt.plot(history.history['loss'], label='Train Loss')
+    plt.plot(history.history['loss'], label='Training Loss')
     plt.plot(history.history['val_loss'], label='Validation Loss')
-    plt.title('Loss Over Epochs')
+    plt.title('Model Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
     plt.legend()
 
-    plt.subplot(1, 2)
-    plt.plot(history.history['accuracy'], label='Train Accuracy')
+    plt.subplot(1, 2, 2)
+    plt.plot(history.history['accuracy'], label='Training Accuracy')
     plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
-    plt.title('Accuracy Over Epochs')
+    plt.title('Model Accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
     plt.legend()
+
     plt.show()
 
-def main():
-    data = load_data('data.csv')
-    features = preprocess_data(data.drop('light_intensity', axis=1).values)
-    labels = data['light_intensity'].values
-
-    history = train_model(features, labels)
-    plot_training_history(history)
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    train_and_evaluate()
 
