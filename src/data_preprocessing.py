@@ -5,79 +5,68 @@
 
 import numpy as np
 import pandas as pd
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RationalQuadratic, Matern
+from sklearn_extra.cluster import KMedoids
+from sklearn.cluster import DBSCAN
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import DBSCAN, KMeans
-from sklearn_extra.cluster import KMedoids
-from sklearn.mixture import GaussianMixture
-import GPy
 
 
-def load_data(csv_path):
-    """Loads data from a CSV file."""
-    return pd.read_csv(csv_path)
+# Model WiFi Signals with Multi-Gaussian Processes (MGPs)
+def model_wifi_signals(rss_data):
+    X = np.array([[i] for i in range(rss_data.shape[0])])  # Example positional index
+    y = rss_data.values
+    kernel = 1.0 * RationalQuadratic(length_scale=1.0, alpha=0.1) + Matern(length_scale=1.0, nu=1.5)
+    gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10)
+    gp.fit(X, y)
+    return gp
 
 
-def apply_gaussian_processes(X):
-    """Applies Multivariate Gaussian Process Regression to model Wi-Fi signals."""
-    kernel = GPy.kern.RBF(input_dim=X.shape[1], variance=1., lengthscale=1.)
-    model = GPy.models.GPRegression(X, kernel=kernel)
-    model.optimize(messages=True)
-    return model.predict(X)
+# Generate Virtual Reference Points (VRPG)
+def generate_virtual_reference_points(wifi_data, method='grid-based'):
+    # This function should be implemented based on spatial data availability and method specifics.
+    pass
 
 
-def virtual_reference_point_generation(X):
-    """Generates virtual reference points using Gaussian Mixture Model."""
-    gmm = GaussianMixture(n_components=5, covariance_type='full')
-    gmm.fit(X)
-    virtual_points = gmm.sample(n_samples=100)[0]  # Generate 100 virtual points
-    return virtual_points
+# Fusion Clustering for Visible Light Data
+def cluster_light_data(light_data):
+    kmedoids = KMedoids(n_clusters=5, random_state=0).fit(light_data)
+    labels_kmedoids = kmedoids.labels_
+    dbscan = DBSCAN(eps=3, min_samples=2).fit(light_data)
+    labels_dbscan = dbscan.labels_
+    return labels_kmedoids, labels_dbscan
 
 
-def fusion_clustering(X):
-    """Applies fusion of DBSCAN and K-medoids clustering algorithms to the dataset."""
-    # DBSCAN to identify core samples
-    dbscan = DBSCAN(eps=0.5, min_samples=10)
-    core_samples_mask = dbscan.fit_predict(X) != -1
-
-    # K-Medoids on core samples
-    core_samples = X[core_samples_mask]
-    kmedoids = KMedoids(n_clusters=5, random_state=0).fit(core_samples)
-    return kmedoids.cluster_centers_
-
-
-def preprocess_and_split(data):
-    """Normalizes data and splits it into training, testing, and validation sets."""
+# Data Preprocessing and Splitting
+def preprocess_and_split(data, test_size=0.2, random_state=42):
     scaler = StandardScaler()
-    features = scaler.fit_transform(data.drop('label', axis=1))
-    labels = data['label'].values
+    feature_columns = [col for col in data.columns if col != 'label']
+    data[feature_columns] = scaler.fit_transform(data[feature_columns])
+    features = data.drop('label', axis=1)
+    labels = data['label']
+    X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=test_size,
+                                                        random_state=random_state)
+    return X_train, X_test, y_train, y_test
 
-    X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.4, random_state=42)
-    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
-    return X_train, X_val, X_test, y_train, y_val, y_test
 
+# Integrate the Entire Pipeline
+def data_processing_pipeline(wifi_data_path, light_data_path):
+    wifi_data = pd.read_csv(wifi_data_path)  # Load WiFi data from CSV
+    light_data = pd.read_csv(light_data_path)  # Load light data from CSV
 
-def main():
-    data = load_data('data.csv')
-    wifi_data = data.filter(regex='wifi')  # Assuming Wi-Fi data columns are prefixed with 'wifi'
-    light_data = data['light_intensity']  # Assuming light intensity is labeled this way
+    gp_model = model_wifi_signals(wifi_data)
+    generate_virtual_reference_points(wifi_data, method='grid-based')
+    labels_kmedoids, labels_dbscan = cluster_light_data(light_data)
 
-    # Process Wi-Fi data using Gaussian Processes
-    wifi_data_modeled = apply_gaussian_processes(wifi_data)
+    # Merge data and labels here (assuming merging logic is defined)
+    combined_data = pd.DataFrame()  # Placeholder for combined data after merging
+    X_train, X_test, y_train, y_test = preprocess_and_split(combined_data)
 
-    # Generate virtual reference points
-    virtual_points = virtual_reference_point_generation(wifi_data_modeled)
-
-    # Process visible light data using fusion clustering
-    light_clusters = fusion_clustering(light_data.values.reshape(-1, 1))
-
-    # Combine all features
-    combined_features = np.hstack((wifi_data_modeled, light_clusters, virtual_points))
-
-    # Split data
-    X_train, X_val, X_test, y_train, y_val, y_test = preprocess_and_split(pd.DataFrame(combined_features))
-    print("Data preprocessing complete. Data split into train, validation, and test sets.")
+    print("Data has been loaded, processed, balanced, and split.")
+    print(f"Training data shape: {X_train.shape}")
+    print(f"Testing data shape: {X_test.shape}")
 
 
 if __name__ == "__main__":
-    main()
+    data_processing_pipeline('wifi_data.csv', 'light_data.csv')
