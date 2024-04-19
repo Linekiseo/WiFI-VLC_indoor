@@ -4,36 +4,35 @@
 # @Author : fanwc
 
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def load_data(csv_path):
     """Loads data from a CSV file."""
     return pd.read_csv(csv_path)
 
-
 def preprocess_data(data):
-    """Applies preprocessing steps such as normalization to the data."""
+    """Normalizes the data features."""
     scaler = StandardScaler()
-    scaled_data = scaler.fit_transform(data.iloc[:, :-1])  # Assuming last column as label if present
-    return scaled_data
-
+    return scaler.fit_transform(data)
 
 def split_data(features, labels, test_size=0.2, random_state=42):
     """Splits the data into training and testing datasets."""
-    X_train, X_test, y_train, y_test = train_test_split(
-        features, labels, test_size=test_size, random_state=random_state)
-    return X_train, X_test, y_train, y_test
+    return train_test_split(features, labels, test_size=test_size, random_state=random_state)
 
+def visualize_processed_data(features, labels):
+    """Visualizes preprocessed features with labels."""
+    plt.figure(figsize=(10, 6))
+    sns.scatterplot(x=features[:, 0], y=features[:, 1], hue=labels)
+    plt.title('Scatter Plot of Processed Features')
+    plt.xlabel('Feature 1')
+    plt.ylabel('Feature 2')
+    plt.show()
 
-# Example usage
 if __name__ == "__main__":
     data = load_data('data.csv')
-    features = data.drop('light_intensity', axis=1)  # Assuming 'light_intensity' as label, adjust as needed
+    features = preprocess_data(data.drop('light_intensity', axis=1))
     labels = data['light_intensity']
-
-    processed_features = preprocess_data(features)
-    X_train, X_test, y_train, y_test = split_data(processed_features, labels)
-    print("Data split into training and testing sets.")
-
+    visualize_processed_data(features, labels)

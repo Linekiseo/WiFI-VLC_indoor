@@ -5,6 +5,8 @@
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def generate_wifi_data(num_samples, num_aps, rssi_range=(-100, 0)):
@@ -22,18 +24,28 @@ def combine_and_save_data(num_samples, num_aps, output_path='data.csv'):
     wifi_data = generate_wifi_data(num_samples, num_aps)
     light_data = generate_light_data(num_samples)
 
-    # Combine data
     combined_data = np.hstack((wifi_data, light_data.reshape(-1, 1)))
-
-    # Convert to DataFrame
     column_names = [f'wifi_{i + 1}' for i in range(num_aps)] + ['light_intensity']
     df = pd.DataFrame(combined_data, columns=column_names)
 
-    # Save to CSV
     df.to_csv(output_path, index=False)
-    print(f"Data saved to {output_path}")
+    return df
 
 
-# Example usage
+def visualize_data(df):
+    """Visualizes distributions of generated data."""
+    plt.figure(figsize=(12, 6))
+    for i in range(df.shape[1] - 1):
+        sns.kdeplot(df.iloc[:, i], label=f'WiFi AP {i + 1}')
+    plt.title('Distribution of WiFi RSSI Values')
+    plt.legend()
+    plt.show()
+
+    sns.histplot(df['light_intensity'], kde=True, color='green')
+    plt.title('Distribution of Light Intensity')
+    plt.show()
+
+
 if __name__ == "__main__":
-    combine_and_save_data(1000, 10)  # Generate 1000 samples, each with data from 10 Wi-Fi APs
+    df = combine_and_save_data(1000, 10, 'data.csv')
+    visualize_data(df)
