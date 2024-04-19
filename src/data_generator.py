@@ -97,6 +97,6 @@ def visualize_data(data):
 
 if __name__ == "__main__":
     data = simulate_environment(100000)
-    data.to_csv('enhanced_simulated_indoor_data.csv', index=False)
+    data.to_csv('../data/raw/enhanced_simulated_indoor_data.csv', index=False)
     visualize_data(data)
 
